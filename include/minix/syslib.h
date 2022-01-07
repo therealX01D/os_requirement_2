@@ -67,6 +67,9 @@ int sys_vmctl_enable_paging(void * data);
 int sys_readbios(phys_bytes address, void *buf, size_t size);
 int sys_stime(time_t boottime);
 int sys_sysctl(int ctl, char *arg1, int arg2);
+/*t_8: system call for our function*/
+int sys_setshortestjf(endpoint_t proc_ep, int exp_time);// T_8: added header connection for system based set shortest job first function that send a message which have encapsulated all info about
+/*---------------*/
 int sys_sysctl_stacktrace(endpoint_t who);
 int sys_vmctl_get_mapping(int index, phys_bytes *addr, phys_bytes *len,
 	int *flags);

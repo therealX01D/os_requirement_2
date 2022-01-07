@@ -13,7 +13,7 @@ int do_start_scheduling(message *m_ptr);
 int do_stop_scheduling(message *m_ptr);
 int do_nice(message *m_ptr);
 void init_scheduling(void);
-
+/*shortest job first: int do_setshortestjf(message* m_ptr);//T_8:header added*/
 /* utility.c */
 int no_sys(int who_e, int call_nr);
 int sched_isokendpt(int ep, int *proc);

@@ -1,4 +1,4 @@
-#define NCALLS		 114	/* number of system calls allowed */
+#define NCALLS		 115	/* number of system calls allowed */
 
 /* In case it isn't obvious enough: this list is sorted numerically. */
 #define EXIT		   1 
@@ -95,12 +95,12 @@
 #define FCHOWN		  96	/* to VFS */
 #define SPROF             98    /* to PM */
 #define CPROF             99    /* to PM */
-
+       
 /* Calls provided by PM and FS that are not part of the API */
 #define PM_NEWEXEC	100	/* from VFS or RS to PM: new exec */
 #define SRV_FORK  	101	/* to PM: special fork call for RS */
 #define EXEC_RESTART	102	/* to PM: final part of exec for RS */
-#define GETPROCNR	104	/* to PM */
+#define GETPROCNR	105	/* to PM */
 #define ISSETUGID	106	/* to PM: ask if process is tainted */
 #define GETEPINFO_O	107	/* to PM: get pid/uid/gid of an endpoint */
 #define SRV_KILL  	111	/* to PM: special kill call for RS */
@@ -113,3 +113,4 @@
 				 * really a standalone call.
 				 */
 #define MAPDRIVER      122     /* to VFS, map a device */
+#define PM_SETSHORTESTJF      114/*T_8: to PM, for using shortest job first err flag*/  

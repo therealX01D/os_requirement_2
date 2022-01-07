@@ -261,7 +261,7 @@ void system_init(void)
   /* Scheduling */
   map(SYS_SCHEDULE, do_schedule);	/* reschedule a process */
   map(SYS_SCHEDCTL, do_schedctl);	/* change process scheduler */
-
+  map(SYS_SETSHORTESTJF, do_setshortestjf);/*shortest job choosing*/
 }
 /*===========================================================================*
  *				get_priv				     *

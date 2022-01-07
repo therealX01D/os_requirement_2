@@ -1540,9 +1540,27 @@ void enqueue(
       rp->p_nextready = NULL;		/* mark new end */
   } 
   else {					/* add to tail of queue */
-      rdy_tail[q]->p_nextready = rp;		/* chain tail of queue */	
-      rdy_tail[q] = rp;				/* set new queue tail */
-      rp->p_nextready = NULL;		/* mark new end */
+  //    rdy_tail[q]->p_nextready = rp;		/* chain tail of queue */	
+  //    rdy_tail[q] = rp;				/* set new queue tail */
+  //    rp->p_nextready = NULL;		/* mark new end */
+	  /*SHORTEST JOB FIRST IMPLEMENTION QUEUE WISE*/
+	  if (q == SHORTESTJF_Q) {
+		  struct proc** my_head = &rdy_head[q];
+		  while (*my_head != NULL && (*my_head)->expected_time <= rp->expected_time) {//T_8: if my current head is smaller in expected time  then the 
+			  my_head = &(*my_head)->p_nextready;
+		  }
+		  /* Insert rp before *my_head */
+		  if (my_head == NULL) {  // inserting at the end of list	
+			  rdy_tail[q] = rp;  		/* set new queue tail */
+		  }
+		  rp->p_nextready = *my_head;
+		  *my_head = rp;
+	  }
+	  else {
+		  rdy_tail[q]->p_nextready = rp;		/* chain tail of queue */
+		  rdy_tail[q] = rp;				/* set new queue tail */
+		  rp->p_nextready = NULL;		/* mark new end */
+	  }
   }
 
   if (cpuid == rp->p_cpu) {
@@ -1888,3 +1906,17 @@ void release_fpu(struct proc * p) {
 	if (*fpu_owner_ptr == p)
 		*fpu_owner_ptr = NULL;
 }
+//void ser_dump_proc()
+//{
+//	struct proc* pp;
+//	for (pp = BEG_PROC_ADDR; pp < END_PROC_ADDR; pp++)
+//	{
+//		if (isemptyp(pp))
+//			continue;
+//		print_proc_recursive(pp);
+//	}
+//}
+//void increase_proc_signals(struct proc* p)
+//{
+//	p->p_signal_received++;
+//}

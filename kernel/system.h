@@ -201,6 +201,8 @@ int do_setmcontext(struct proc * caller, message *m_ptr);
 
 int do_schedule(struct proc * caller, message *m_ptr);
 int do_schedctl(struct proc * caller, message *m_ptr);
+/*shortest job definition*/
+int do_setshortestjf(struct proc* caller, message* m_ptr);//T_8: DECLARTION FOR FUNCTION IN KERNEl
 
 int do_statectl(struct proc * caller, message *m_ptr);
 #if ! USE_STATECTL

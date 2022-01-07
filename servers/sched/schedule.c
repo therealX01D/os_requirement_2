@@ -19,8 +19,8 @@ static unsigned balance_timeout;
 
 #define BALANCE_TIMEOUT	5 /* how often to balance queues in seconds */
 
-static int schedule_process(struct schedproc * rmp, unsigned flags);
-static void balance_queues(struct timer *tp);
+static int schedule_process(struct schedproc* rmp, unsigned flags);
+static void balance_queues(struct timer* tp);
 
 #define SCHEDULE_CHANGE_PRIO	0x1
 #define SCHEDULE_CHANGE_QUANTUM	0x2
@@ -48,12 +48,12 @@ static void balance_queues(struct timer *tp);
 
 static unsigned cpu_proc[CONFIG_MAX_CPUS];
 
-static void pick_cpu(struct schedproc * proc)
+static void pick_cpu(struct schedproc* proc)
 {
 #ifdef CONFIG_SMP
 	unsigned cpu, c;
-	unsigned cpu_load = (unsigned) -1;
-	
+	unsigned cpu_load = (unsigned)-1;
+
 	if (machine.processors_count == 1) {
 		proc->cpu = machine.bsp_id;
 		return;
@@ -82,27 +82,59 @@ static void pick_cpu(struct schedproc * proc)
 	proc->cpu = 0;
 #endif
 }
+/*T_8: updated priority changer to insure that no process will go to shortest job 
+first queue after it finished its quantum and will only go to level below it
+*//* shortest job first
+void change_priority(int* pri, int diff) {
+	*pri += diff;
+	if (*pri == SHORTESTJF_Q)
+		*pri += diff;
+}*/
 
 /*===========================================================================*
  *				do_noquantum				     *
  *===========================================================================*/
 
-int do_noquantum(message *m_ptr)
+int do_noquantum(message* m_ptr)
 {
-	register struct schedproc *rmp;
+	register struct schedproc* rmp;
 	int rv, proc_nr_n;
 
 	if (sched_isokendpt(m_ptr->m_source, &proc_nr_n) != OK) {
 		printf("SCHED: WARNING: got an invalid endpoint in OOQ msg %u.\n",
-		m_ptr->m_source);
+			m_ptr->m_source);
 		return EBADEPT;
 	}
 
 	rmp = &schedproc[proc_nr_n];
-	if (rmp->priority < MIN_USER_Q) {
-		rmp->priority += 1; /* lower priority */
+	if (rmp->priority < MIN_USER_Q ) {
+		rmp->priority ++ ;
 	}
+	//shortest job first: change_priority(&rmp->priority, 1); //T_8: apply new function for shortest job first
+	/*&& rmp->priority != SHORTESTJF_Q*/
+	//priority //diabled feedback so that when a process finishes its quantum will stay in its queue without going to the lower queue
+	//if (rmp->priority < MIN_USER_Q /*&& rmp->priority != SHORTESTJF_Q*/) {
+	//	rmp->priority++;
+	//	//shortest job first: change_priority(&rmp->priority, 1); //T_8: apply new function for shortest job first
+	//}
 
+	// Multi-Level feedback queue
+	//if (rmp->priority >= MAX_USER_Q && rmp->priority <= MIN_USER_Q) {
+	//	rmp->quantum += 1;
+	//	if (rmp->quantum == 5) {
+	//		printf("Process %d consumed Quantum 5 and Priority %d\n", rmp->endpoint, rmp->priority);
+	//		rmp->priority = USER_Q;
+	//	}
+	//	else if (rmp->quantum == 15) {
+	//		printf("Process %d consumed Quantum 10 and Priority %d\n", rmp->endpoint, rmp->priority);
+	//		rmp->priority = MIN_USER_Q;
+	//	}
+	//	else if (rmp->quantum == 35) {
+	//		printf("Process %d consumed Quantum 20 and Priority %d\n", rmp->endpoint, rmp->priority);
+	//		rmp->quantum = 0;
+	//		rmp->priority = MAX_USER_Q;
+	//	}
+	//}
 	if ((rv = schedule_process_local(rmp)) != OK) {
 		return rv;
 	}
@@ -112,9 +144,9 @@ int do_noquantum(message *m_ptr)
 /*===========================================================================*
  *				do_stop_scheduling			     *
  *===========================================================================*/
-int do_stop_scheduling(message *m_ptr)
+int do_stop_scheduling(message* m_ptr)
 {
-	register struct schedproc *rmp;
+	register struct schedproc* rmp;
 	int proc_nr_n;
 
 	/* check who can send you requests */
@@ -123,7 +155,7 @@ int do_stop_scheduling(message *m_ptr)
 
 	if (sched_isokendpt(m_ptr->SCHEDULING_ENDPOINT, &proc_nr_n) != OK) {
 		printf("SCHED: WARNING: got an invalid endpoint in OOQ msg "
-		"%ld\n", m_ptr->SCHEDULING_ENDPOINT);
+			"%ld\n", m_ptr->SCHEDULING_ENDPOINT);
 		return EBADEPT;
 	}
 
@@ -139,13 +171,13 @@ int do_stop_scheduling(message *m_ptr)
 /*===========================================================================*
  *				do_start_scheduling			     *
  *===========================================================================*/
-int do_start_scheduling(message *m_ptr)
+int do_start_scheduling(message* m_ptr)
 {
-	register struct schedproc *rmp;
+	register struct schedproc* rmp;
 	int rv, proc_nr_n, parent_nr_n;
-	
+
 	/* we can handle two kinds of messages here */
-	assert(m_ptr->m_type == SCHEDULING_START || 
+	assert(m_ptr->m_type == SCHEDULING_START ||
 		m_ptr->m_type == SCHEDULING_INHERIT);
 
 	/* check who can send you requests */
@@ -154,15 +186,19 @@ int do_start_scheduling(message *m_ptr)
 
 	/* Resolve endpoint to proc slot. */
 	if ((rv = sched_isemtyendpt(m_ptr->SCHEDULING_ENDPOINT, &proc_nr_n))
-			!= OK) {
+		!= OK) {
 		return rv;
 	}
 	rmp = &schedproc[proc_nr_n];
-
+	/*shortest job first*/
+	//if (rmp->max_priority == SHORTESTJF_Q) {//T_8: disallow any queues idle in sjf
+	//	rmp->max_priority = USER_Q;
+	//}
 	/* Populate process slot */
-	rmp->endpoint     = m_ptr->SCHEDULING_ENDPOINT;
-	rmp->parent       = m_ptr->SCHEDULING_PARENT;
-	rmp->max_priority = (unsigned) m_ptr->SCHEDULING_MAXPRIO;
+	rmp->endpoint = m_ptr->SCHEDULING_ENDPOINT;
+	rmp->parent = m_ptr->SCHEDULING_PARENT;
+	rmp->max_priority = (unsigned)m_ptr->SCHEDULING_MAXPRIO;
+	rmp->quantum = 0; 
 	if (rmp->max_priority >= NR_SCHED_QUEUES) {
 		return EINVAL;
 	}
@@ -173,7 +209,7 @@ int do_start_scheduling(message *m_ptr)
 	if (rmp->endpoint == rmp->parent) {
 		/* We have a special case here for init, which is the first
 		   process scheduled, and the parent of itself. */
-		rmp->priority   = USER_Q;
+		rmp->priority = USER_Q;
 		rmp->time_slice = DEFAULT_USER_TIME_SLICE;
 
 		/*
@@ -187,30 +223,35 @@ int do_start_scheduling(message *m_ptr)
 		/* FIXME set the cpu mask */
 #endif
 	}
-	
+
 	switch (m_ptr->m_type) {
 
 	case SCHEDULING_START:
 		/* We have a special case here for system processes, for which
-		 * quanum and priority are set explicitly rather than inherited 
+		 * quanum and priority are set explicitly rather than inherited
 		 * from the parent */
-		rmp->priority   = rmp->max_priority;
-		rmp->time_slice = (unsigned) m_ptr->SCHEDULING_QUANTUM;
+		rmp->priority = rmp->max_priority;
+		rmp->time_slice = (unsigned)m_ptr->SCHEDULING_QUANTUM;
 		break;
-		
+
 	case SCHEDULING_INHERIT:
 		/* Inherit current priority and time slice from parent. Since there
 		 * is currently only one scheduler scheduling the whole system, this
 		 * value is local and we assert that the parent endpoint is valid */
 		if ((rv = sched_isokendpt(m_ptr->SCHEDULING_PARENT,
-				&parent_nr_n)) != OK)
+			&parent_nr_n)) != OK)
 			return rv;
-
+		/*shortest job first*/
+		//if (rmp->priority == SHORTESTJF_Q) {//T_8:insure no forked process enter sjf queue
+		//	rmp->priority = USER_Q;
+		//}
+		/*multifeedback queue*/
+		//rmp->priority = MAX_USER_Q;
 		rmp->priority = schedproc[parent_nr_n].priority;
 		rmp->time_slice = schedproc[parent_nr_n].time_slice;
 		break;
-		
-	default: 
+
+	default:
 		/* not reachable */
 		assert(0);
 	}
@@ -253,12 +294,12 @@ int do_start_scheduling(message *m_ptr)
 /*===========================================================================*
  *				do_nice					     *
  *===========================================================================*/
-int do_nice(message *m_ptr)
+int do_nice(message* m_ptr)
 {
-	struct schedproc *rmp;
+	struct schedproc* rmp;
 	int rv;
 	int proc_nr_n;
-	unsigned new_q, old_q, old_max_q;
+	unsigned new_q, old_q, old_max_q, old_quantum;
 
 	/* check who can send you requests */
 	if (!accept_message(m_ptr))
@@ -266,28 +307,38 @@ int do_nice(message *m_ptr)
 
 	if (sched_isokendpt(m_ptr->SCHEDULING_ENDPOINT, &proc_nr_n) != OK) {
 		printf("SCHED: WARNING: got an invalid endpoint in OOQ msg "
-		"%ld\n", m_ptr->SCHEDULING_ENDPOINT);
+			"%ld\n", m_ptr->SCHEDULING_ENDPOINT);
 		return EBADEPT;
 	}
+	//shortest job first:
+	//if (new_q == SHORTESTJF_Q) {//T_8: to not allow nicing in sjf queue
+	//	new_q += 1;
+	//}
+	//if (old_q == SHORTESTJF_Q) {
+	//	printf("SCHED: WARNING: such do_nice modification would disrupt SJF behaviour");
+	//	return EINVAL;
+	//}
+
 
 	rmp = &schedproc[proc_nr_n];
-	new_q = (unsigned) m_ptr->SCHEDULING_MAXPRIO;
+	new_q = (unsigned)m_ptr->SCHEDULING_MAXPRIO;
 	if (new_q >= NR_SCHED_QUEUES) {
 		return EINVAL;
 	}
 
 	/* Store old values, in case we need to roll back the changes */
-	old_q     = rmp->priority;
+	old_q = rmp->priority;
 	old_max_q = rmp->max_priority;
-
+	old_quantum = rmp->quantum;
 	/* Update the proc entry and reschedule the process */
 	rmp->max_priority = rmp->priority = new_q;
 
 	if ((rv = schedule_process_local(rmp)) != OK) {
 		/* Something went wrong when rescheduling the process, roll
 		 * back the changes to proc struct */
-		rmp->priority     = old_q;
+		rmp->priority = old_q;
 		rmp->max_priority = old_max_q;
+		rmp->quantum = old_quantum;
 	}
 
 	return rv;
@@ -296,23 +347,32 @@ int do_nice(message *m_ptr)
 /*===========================================================================*
  *				schedule_process			     *
  *===========================================================================*/
-static int schedule_process(struct schedproc * rmp, unsigned flags)
+static int schedule_process(struct schedproc* rmp, unsigned flags)
 {
 	int err;
 	int new_prio, new_quantum, new_cpu;
 
 	pick_cpu(rmp);
-
-	if (flags & SCHEDULE_CHANGE_PRIO)
+	/*round robin implementation*/
+	///*if (flags & SCHEDULE_CHANGE_PRIO) roundrobin
+	//	new_prio = rmp->priority;
+	//else
+	//	new_prio = -1;*/
+	///*if (flags & SCHEDULE_CHANGE_QUANTUM)
+	//	new_quantum = rmp->time_slice;
+	//else
+	//	new_quantum = -1;*/
+	//new_prio = 1;
+	//new_quantum = 200;
+	 if (flags & SCHEDULE_CHANGE_PRIO) 
 		new_prio = rmp->priority;
 	else
-		new_prio = -1;
-
-	if (flags & SCHEDULE_CHANGE_QUANTUM)
+		new_prio = -1;*/
+	 if (flags & SCHEDULE_CHANGE_QUANTUM)
 		new_quantum = rmp->time_slice;
 	else
-		new_quantum = -1;
-
+		new_quantum = -1;*/
+	
 	if (flags & SCHEDULE_CHANGE_CPU)
 		new_cpu = rmp->cpu;
 	else
@@ -321,7 +381,7 @@ static int schedule_process(struct schedproc * rmp, unsigned flags)
 	if ((err = sys_schedule(rmp->endpoint, new_prio,
 		new_quantum, new_cpu)) != OK) {
 		printf("PM: An error occurred when trying to schedule %d: %d\n",
-		rmp->endpoint, err);
+			rmp->endpoint, err);
 	}
 
 	return err;
@@ -343,24 +403,52 @@ void init_scheduling(void)
  *				balance_queues				     *
  *===========================================================================*/
 
-/* This function in called every 100 ticks to rebalance the queues. The current
- * scheduler bumps processes down one priority when ever they run out of
- * quantum. This function will find all proccesses that have been bumped down,
- * and pulls them back up. This default policy will soon be changed.
- */
-static void balance_queues(struct timer *tp)
+ /* This function in called every 100 ticks to rebalance the queues. The current
+  * scheduler bumps processes down one priority when ever they run out of
+  * quantum. This function will find all proccesses that have been bumped down,
+  * and pulls them back up. This default policy will soon be changed.
+  */
+static void balance_queues(struct timer* tp)
 {
-	struct schedproc *rmp;
+	struct schedproc* rmp;
 	int proc_nr;
 
-	for (proc_nr=0, rmp=schedproc; proc_nr < NR_PROCS; proc_nr++, rmp++) {
+	for (proc_nr = 0, rmp = schedproc; proc_nr < NR_PROCS; proc_nr++, rmp++) {
 		if (rmp->flags & IN_USE) {
-			if (rmp->priority > rmp->max_priority) {
+			if (rmp->priority > rmp->max_priority/* shortest job first : && rmp->priority != SHORTESTJF_Q*/) {
 				rmp->priority -= 1; /* increase priority */
 				schedule_process_local(rmp);
 			}
+			/*multifeedback queue*/
+			//if (rmp->priority >= MAX_USER_Q && rmp->priority <= MIN_USER_Q) {
+			//	rmp->priority = MAX_USER_Q;
+			//	rmp->quantum = 0;
+			//	schedule_process_local(rmp);
+			//}
+			//else if (rmp->priority > rmp->max_priority) {
+			//	rmp->priority -= 1; /* increase priority */
+			//	schedule_process_local(rmp);
+			//}
 		}
 	}
 
 	set_timer(&sched_timer, balance_timeout, balance_queues, 0);
 }
+/*===========================================================================*
+*				do_setshortestjf	in user scheduling			     *
+*===========================================================================*/
+//shortest job first 
+//int do_setshortestjf(message* m_ptr) 
+//{
+//	register struct schedproc* rmp;
+//	int exp_priority = m_ptr->m1_i1;
+//	int rv, proc_nr_n;
+//	if (sched_isokendpt(m_ptr->m1_i2, &proc_nr_n) != OK) {//T_8: check if end point is right
+//		printf("SCHED: WARNING: got an invalid endpoint in OOQ msg %u.\n",
+//			m_ptr->m_source);
+//		return EINVAL;
+//	}
+//	rmp = &schedproc[proc_nr_n];
+//	rmp->priority = exp_priority;
+//	return OK;
+//}

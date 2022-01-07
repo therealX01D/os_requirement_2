@@ -68,6 +68,13 @@
 /* Scheduling priorities. Values must start at zero (highest
  * priority) and increment.
  */
+
+/*MultiFeedback queue scheduling: *///T_8: added three queue level for multi-levelfeedback queue
+//#define NR_SCHED_QUEUES   19	/* MUST equal minimum priority + 1 */
+//#define TASK_Q		   0	/* highest, used for kernel tasks */
+//#define MAX_USER_Q  	   16    /* highest priority for any user process */
+//#define USER_Q        16 //T_8: to start from 16 instead of 7 
+
 #define NR_SCHED_QUEUES   16	/* MUST equal minimum priority + 1 */
 #define TASK_Q		   0	/* highest, used for kernel tasks */
 #define MAX_USER_Q  	   0    /* highest priority for user processes */   
@@ -76,11 +83,23 @@
 #define MIN_USER_Q	  (NR_SCHED_QUEUES - 1)	/* minimum priority for user
 						   processes */
 /* default scheduling quanta */
+// #define USER_QUANTUM 5 
 #define USER_QUANTUM 200
 
 /* defualt user process cpu */
 #define USER_DEFAULT_CPU	-1 /* use the default cpu or do not change the
 				      current one */
+//shortest job first scheduling	
+/*shortest jobs added*/
+//#define SHORTESTJF_Q			7 /* T_8: preferred queue of working*/	
+//#define SHORTESTJF_QUANTUM 		50000000/*T_8: running the process huge quantum to run on*/	
+//#define SHORTESTJF_MIN_EXP_TIME 	0 /*T_8: minimum expected time of execution*/
+//#define SHORTESTJF_RESET_POLICY 	0 /*T_8: inorder to continue in other queues */
+//#define SHORTESTJF_MAX_EXP_TIME 	100/*T_8: maximum expected time of execution*/
+//#define MAX_SHORTESTJFPRIO	 100    
+/*end shortest job first queue parameters*/
+
+
 
 /*===========================================================================*
  *	There are no user-settable parameters after this line		     *

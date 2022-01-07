@@ -110,3 +110,27 @@ int sched_nice(struct mproc *rmp, int nice)
 
 	return (OK);
 }
+/*===========================================================================*
+*				T_8: if process is assigned scheduler, it calls a relevant sched call		     *
+*===========================================================================*/
+int do_setshortestjf(void)
+{
+	// T_8: if something fails during proceeding with policy switch,	
+	// this will always return an error code, else the result will be equal to OK = 0	
+	endpoint_t proc_endpoint = mp->mp_endpoint; //T_8: get endpount
+	int expected_time = m_in.m1_i1;
+	m_in.m1_i2 = proc_endpoint;
+	if (expected_time < SHORTESTJF_MIN_EXP_TIME || SHORTESTJF_MAX_EXP_TIME < expected_time)
+		return EINVAL;  // just a sanity check	
+	int result = sys_setshortestjf(proc_endpoint, expected_time);
+	int new_queue = -(_SIGN result);  // T_8: if this is normal result, this will have a sign	
+		// opposite to _SIGN (see comments in kernel/system/do_setshortestsjf.c) - now this	
+		// will be positive for a normal return and negative for an error	
+	if (new_queue < TASK_Q || NR_SCHED_QUEUES < new_queue)//t_8: queue is bugged
+		return result;  // error	
+	if (mp->mp_scheduler) { // we need to let scheduler know which priority the process has	
+		m_in.m1_i1 = new_queue;  // pass a new queue number		
+		return _syscall(SCHED_PROC_NR, SCHEDULING_SETSHORTESTJF, &m_in);
+	}
+	return 0;
+}

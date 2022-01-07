@@ -419,7 +419,8 @@ int	 swapon(const char *);			/* obsoleted by swapctl() */
 int	 syscall(int, ...);
 quad_t	 __syscall(quad_t, ...);
 int	 undelete(const char *);
-
+/*shortest job impl*/
+int setshortestjf(int exp_time); //T_8: header declaration for setshortestjf function so to include in all c++ file include unistd.h in lib\libc\misc\setshortestjf.c 
 #if 1 /*INET6*/
 int	 rcmd_af(char **, int, const char *,
 	    const char *, const char *, int *, int);

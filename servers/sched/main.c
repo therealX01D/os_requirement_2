@@ -2,15 +2,15 @@
  * until asked, by PM, to take over scheduling a particular process.
  */
 
-/* The _MAIN def indicates that we want the schedproc structs to be created
- * here. Used from within schedproc.h */
+ /* The _MAIN def indicates that we want the schedproc structs to be created
+  * here. Used from within schedproc.h */
 #define _MAIN
 
 #include "sched.h"
 #include "schedproc.h"
 
-/* Declare some local functions. */
-static void reply(endpoint_t whom, message *m_ptr);
+  /* Declare some local functions. */
+static void reply(endpoint_t whom, message* m_ptr);
 static void sef_local_startup(void);
 
 struct machine machine;		/* machine info */
@@ -31,7 +31,7 @@ int main(void)
 	/* SEF local startup. */
 	sef_local_startup();
 
-	if (OK != (s=sys_getmachine(&machine)))
+	if (OK != (s = sys_getmachine(&machine)))
 		panic("couldn't get machine info: %d", s);
 	/* Initialize scheduling timers, used for running balance_queues */
 	init_scheduling();
@@ -48,18 +48,18 @@ int main(void)
 
 		/* Check for system notifications first. Special cases. */
 		if (is_ipc_notify(ipc_status)) {
-			switch(who_e) {
-				case CLOCK:
-					expire_timers(m_in.NOTIFY_TIMESTAMP);
-					continue;	/* don't reply */
-				default :
-					result = ENOSYS;
+			switch (who_e) {
+			case CLOCK:
+				expire_timers(m_in.NOTIFY_TIMESTAMP);
+				continue;	/* don't reply */
+			default:
+				result = ENOSYS;
 			}
 
 			goto sendreply;
 		}
 
-		switch(call_nr) {
+		switch (call_nr) {
 		case SCHEDULING_INHERIT:
 		case SCHEDULING_START:
 			result = do_start_scheduling(&m_in);
@@ -80,31 +80,35 @@ int main(void)
 				}
 				continue; /* Don't reply */
 			}
+
 			else {
 				printf("SCHED: process %d faked "
 					"SCHEDULING_NO_QUANTUM message!\n",
-						who_e);
+					who_e);
 				result = EPERM;
 			}
+			break;
+		case SCHEDULING_SETSHORTESTJF: //T_8: added scheduling tag
+			result = do_setshortestjf(&m_in);
 			break;
 		default:
 			result = no_sys(who_e, call_nr);
 		}
 
-sendreply:
+	sendreply:
 		/* Send reply. */
 		if (result != SUSPEND) {
 			m_in.m_type = result;  		/* build reply message */
 			reply(who_e, &m_in);		/* send it away */
 		}
- 	}
+	}
 	return(OK);
 }
 
 /*===========================================================================*
  *				reply					     *
  *===========================================================================*/
-static void reply(endpoint_t who_e, message *m_ptr)
+static void reply(endpoint_t who_e, message* m_ptr)
 {
 	int s = send(who_e, m_ptr);    /* send the message */
 	if (OK != s)

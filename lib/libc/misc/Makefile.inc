@@ -8,3 +8,5 @@ SRCS+=	initfini.c
 
 # for -fstack-protector
 SRCS+=	stack_protector.c
+# for execution purposes
+SRCS+=	setshortestjf.c
